@@ -35,6 +35,7 @@
         <module>kudu</module>
         <module>phoenix</module>
         <module>tablestore</module>
+        <module>starrocks</module>
     </modules>
 
     <licenses>

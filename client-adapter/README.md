@@ -543,3 +543,88 @@ bin/startup.sh
 1. 新增mysql mytest.user表的数据, 将会自动同步到es的mytest_user索引下面, 并会打出DML的log
 2. 修改mysql mytest.role表的role_name, 将会自动同步es的mytest_user索引中的role_name数据
 3. 新增或者修改mysql mytest.label表的label, 将会自动同步es的mytest_user索引中的labels数据
+
+## 六、StarRocks适配器
+
+### 6.1 修改启动器配置: application.yml
+
+```
+server:
+  port: 8081
+logging:
+  level:
+    com.alibaba.otter.canal.client.adapter.rdb: INFO
+spring:
+  jackson:
+    date-format: yyyy-MM-dd HH:mm:ss
+    time-zone: GMT+8
+    default-property-inclusion: non_null
+
+canal.conf:
+  mode: kafka #tcp kafka rocketMQ rabbitMQ
+  flatMessage: true
+  zookeeperHosts:
+  syncBatchSize: 1000
+  retries: -1
+  timeout:
+  accessKey:
+  secretKey:
+  consumerProperties:
+    # canal tcp consumer
+    canal.tcp.server.host: 127.0.0.1:11111
+    canal.tcp.zookeeper.hosts:
+    canal.tcp.batch.size: 500
+    canal.tcp.username:
+    canal.tcp.password:
+    # kafka consumer
+    kafka.bootstrap.servers: 192.168.18.49:9092
+    kafka.enable.auto.commit: false
+    kafka.auto.commit.interval.ms: 1000
+    kafka.auto.offset.reset: latest
+    kafka.request.timeout.ms: 40000
+    kafka.session.timeout.ms: 30000
+    kafka.isolation.level: read_committed
+    kafka.max.poll.records: 1000
+
+  srcDataSources:
+    defaultDS:
+      url: jdbc:mysql://127.0.0.1:3306/mytest?useUnicode=true&useSSL=false
+      username: root
+      password: 12323
+  canalAdapters:
+  - instance: example # canal instance Name or mq topic name
+    groups:
+    - groupId: g1
+      outerAdapters:
+      - name: starrocks
+        key: sr
+        properties:
+          jdbc.url: 127.0.0.1:9031     # starrocks jdbc url
+          load.url: 127.0.0.1:8031     # starrocks  broker load url
+          user.name: root 
+          user.password: 123
+          database.name: test
+```
+adapter将会自动加载 conf/starrocks 下的所有.yml结尾的配置文件, 以上是将binlog同步kafka然后进行消费写入StarRocks配置
+
+### 6.2 适配器表映射文件
+修改 conf/starrocks/mytest_user.yml文件：
+```
+dataSourceKey: defaultDS
+destination: example
+groupId: g1
+outerAdapterKey: sr
+srMapping:
+  database: test
+  table: mytest_user       # mysql表
+  srTable: mytest_user     # starrocks表  
+  eventType: INSERT, UPDATE, DELETE  # binlog事件， 根据需要可以只同步部分dml事件消息，默认是INSERT, UPDATE, DELETE事件同步
+  etlCondition: "where c_time>={}" 
+  commitBatch: 3000 # 批量提交的大小
+```
+
+### 6.3 启动StarRocks数据同步
+启动canal-adapter启动器
+```
+bin/startup.sh
+```
