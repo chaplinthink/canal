@@ -615,10 +615,10 @@ destination: example
 groupId: g1
 outerAdapterKey: sr
 srMapping:
-  database: test
-  table: mytest_user       # mysql表
-  srTable: mytest_user     # starrocks表  
-  eventType: INSERT, UPDATE, DELETE  # binlog事件， 根据需要可以只同步部分dml事件消息，默认是INSERT, UPDATE, DELETE事件同步
+  database: mytest         # MySQL库
+  table: mytest_user       # MySQL表
+  srTable: mytest_user     # StarRocks表  
+  eventType: INSERT, UPDATE, DELETE  # binlog事件,根据需要可以只同步部分dml事件消息，默认是INSERT, UPDATE, DELETE事件同步
   etlCondition: "where c_time>={}" 
   commitBatch: 3000 # 批量提交的大小
 ```
